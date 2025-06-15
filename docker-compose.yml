@@ -1,0 +1,27 @@
+services:
+
+  probe:
+    build:
+      context: .
+    volumes:
+      - /sys:/sys:ro  # required to access /sys/fs/cgroup/docker/CONTAINER_ID
+    privileged: true  # required to run bpftrace, as an alternative could try setting CAP_BPF, CAP_PERFMON
+    pid: host         # required to trace processes from host
+
+  stress-mem:
+    image: python:3-slim
+    volumes:
+      - ./stress-mem:/app
+    working_dir: /app
+    command: python3 main.py
+    restart: on-failure
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 128MiB
+        reservations:
+          memory: 64MiB
+    # mem_swappiness: 0     # this doesn't seem to work to restrict swap usage, nor does it change effective swappiness value in memcg
+    memswap_limit: 128MiB   # disable swap by setting memswap_limit = mem_limit
+    stop_grace_period: 1s

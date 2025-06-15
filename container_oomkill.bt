@@ -1,0 +1,83 @@
+#!/usr/bin/env bpftrace
+/*
+ * container_oomkill    Trace OOM killer in containers.
+ *        For Linux, uses bpftrace and eBPF.
+ *
+ * This traces the kernel out-of-memory killer by using kernel dynamic tracing of oom_kill_process().
+ * Prints the process host pid, container id, cgroup path, command and a few other stats.
+ * Note: There's no guarantee that the OOM killed process is within a "container", this script just assumes it is.
+ *
+ * Example of usage:
+ *
+ * # ./container_oomkill.bt
+ * Tracing oom_kill_process()... Ctrl-C to end.
+ *
+ * Adapted from the original bpftrace's tools/oomkill.bt by Brendan Gregg:
+ * -> https://github.com/bpftrace/bpftrace/blob/master/tools/oomkill.bt
+ */
+
+#ifndef BPFTRACE_HAVE_BTF
+#include <linux/oom.h>
+#endif
+
+BEGIN
+{
+    printf("Tracing oom_kill_process()... Hit Ctrl-C to end.\n");
+}
+
+// fn: static void oom_kill_process(struct oom_control *oc, const char *message)
+// https://github.com/torvalds/linux/blob/master/mm/oom_kill.c#L1017
+kprobe:oom_kill_process
+{
+    $oc = (struct oom_control *)arg0;
+    $message = str(arg1);
+
+    // print datetime with milliseconds precision
+    printf("%s", strftime("%Y-%m-%d %H:%M:%S", nsecs));
+    printf(",%03d", (nsecs % 1000000000) / 1000000);
+
+    // print labels
+    printf(" probe=\"%s\"\n",
+        probe);
+    printf("  message=\"%s\"\n",
+        $message);
+    printf("  host_pid=\"%d\" container_id=\"%s\" command=\"%s\"\n",
+        $oc->chosen->pid,
+        $oc->chosen->nsproxy->uts_ns->name.nodename,
+        $oc->chosen->comm);
+
+    // oom_control stats
+    printf("  oc_totalpages=\"%d\" oc_chosen_points=\"%d\"\n",
+        $oc->totalpages,        // = mem + swap
+        $oc->chosen_points);    // = filepages + anonpages + swapents + shmempages + pgtables_bytes / PAGE_SIZE + oom_score_adj * totalpages / 1000
+
+    // cgroup stats
+    printf("  memcg_memory_usage_pages=\"%d\" memcg_memory_max_pages=\"%d\" memcg_memory_low_pages=\"%d\"\n",
+        $oc->memcg->memory.usage.counter,   // memory usage in pages
+        $oc->memcg->memory.max,             // memory hard limit
+        $oc->memcg->memory.low);            // memory request
+    printf("  memcg_swap_current_pages=\"%d\" memcg_swap_max_pages=\"%d\" memcg_swappiness=\"%d\"\n",
+        $oc->memcg->swap.usage.counter,     // swap usage in pages
+        $oc->memcg->swap.max,               // swap hard limit
+        $oc->memcg->swappiness);
+
+    // stats used in oom badness calculation
+    printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
+        $oc->chosen->mm->rss_stat.count[0].counter,
+        $oc->chosen->mm->rss_stat.count[1].counter,
+        $oc->chosen->mm->rss_stat.count[2].counter,
+        $oc->chosen->mm->rss_stat.count[3].counter);
+    printf("  mm_pgtables_bytes=\"%d\"\n",
+        $oc->chosen->mm->pgtables_bytes.counter);
+    printf("  proc_oom_score_adj=\"%d\"\n",
+        $oc->chosen->signal->oom_score_adj);    // score adj used in oom_badness calculation
+
+    // minor and major page faults
+    printf("  proc_min_flt=\"%d\" proc_maj_flt=\"%d\"\n",
+        $oc->chosen->min_flt,                   // minor page faults
+		$oc->chosen->maj_flt);                  // major page faults
+
+    // calculated stats
+    printf("  uptime_ms=\"%lld\"\n",
+        (nsecs - $oc->chosen->start_time) / 1000000);
+}
