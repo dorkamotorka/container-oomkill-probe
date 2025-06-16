@@ -9,7 +9,7 @@ make up
 ```
 
 Example output:
-```sh
+```
 stress-mem-1  | 2025-06-16 04:48:20,706 INFO: Allocating 124 MiB...
 probe-1       | 2025-06-16 04:48:20,219 probe="kprobe:oom_kill_process"
 probe-1       |   message="Memory cgroup out of memory"
