@@ -17,7 +17,9 @@
  */
 
 #ifndef BPFTRACE_HAVE_BTF
+#include <linux/mm.h>
 #include <linux/oom.h>
+#include <linux/percpu_counter.h>
 #endif
 
 BEGIN
@@ -30,6 +32,7 @@ BEGIN
 kprobe:oom_kill_process
 {
     $oc = (struct oom_control *)arg0;
+    $rss_stat = (struct percpu_counter *)$oc->chosen->mm->rss_stat;
     $message = str(arg1);
 
     // print datetime with milliseconds precision
@@ -61,12 +64,23 @@ kprobe:oom_kill_process
         $oc->memcg->swap.max,               // swap hard limit
         $oc->memcg->swappiness);
 
-    // stats used in oom badness calculation
     printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
-        $oc->chosen->mm->rss_stat.count[0].counter,
-        $oc->chosen->mm->rss_stat.count[1].counter,
-        $oc->chosen->mm->rss_stat.count[2].counter,
-        $oc->chosen->mm->rss_stat.count[3].counter);
+        $rss_stat[0].count,
+        $rss_stat[1].count,
+        $rss_stat[2].count,
+        $rss_stat[3].count);
+    // macos
+    //printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
+    //    $oc->chosen->mm->rss_stat[0].count,
+    //    $oc->chosen->mm->rss_stat[1].count,
+    //    $oc->chosen->mm->rss_stat[2].count,
+    //    $oc->chosen->mm->rss_stat[3].count);
+    // linux
+    //printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
+    //    $oc->chosen->mm->rss_stat.count[0].counter,
+    //    $oc->chosen->mm->rss_stat.count[1].counter,
+    //    $oc->chosen->mm->rss_stat.count[2].counter,
+    //    $oc->chosen->mm->rss_stat.count[3].counter);
     printf("  mm_pgtables_bytes=\"%d\"\n",
         $oc->chosen->mm->pgtables_bytes.counter);
     printf("  proc_oom_score_adj=\"%d\"\n",
