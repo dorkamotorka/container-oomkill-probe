@@ -2,6 +2,8 @@
 
 A simple container oomkill eBPF probe.
 
+See the blog post [Troubleshoot Container OOM Kills with eBPF](https://dev.to/ar2pi/troubleshoot-container-oom-kills-with-ebpf-4am).
+
 ## Run
 
 ```sh
