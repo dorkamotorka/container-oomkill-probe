@@ -61,6 +61,7 @@ kprobe:oom_kill_process
         $oc->memcg->swap.max,               // swap hard limit
         $oc->memcg->swappiness);
 
+    // stats used in OOM badness calculation
     printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
         $oc->chosen->mm->rss_stat[0].count,
         $oc->chosen->mm->rss_stat[1].count,
