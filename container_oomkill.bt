@@ -17,9 +17,7 @@
  */
 
 #ifndef BPFTRACE_HAVE_BTF
-#include <linux/mm.h>
 #include <linux/oom.h>
-#include <linux/percpu_counter.h>
 #endif
 
 BEGIN
@@ -32,7 +30,6 @@ BEGIN
 kprobe:oom_kill_process
 {
     $oc = (struct oom_control *)arg0;
-    $rss_stat = (struct percpu_counter *)$oc->chosen->mm->rss_stat;
     $message = str(arg1);
 
     // print datetime with milliseconds precision
@@ -65,17 +62,16 @@ kprobe:oom_kill_process
         $oc->memcg->swappiness);
 
     printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
-        $rss_stat[0].count,
-        $rss_stat[1].count,
-        $rss_stat[2].count,
-        $rss_stat[3].count);
-    // macos
-    //printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
-    //    $oc->chosen->mm->rss_stat[0].count,
-    //    $oc->chosen->mm->rss_stat[1].count,
-    //    $oc->chosen->mm->rss_stat[2].count,
-    //    $oc->chosen->mm->rss_stat[3].count);
-    // linux
+        $oc->chosen->mm->rss_stat[0].count,
+        $oc->chosen->mm->rss_stat[1].count,
+        $oc->chosen->mm->rss_stat[2].count,
+        $oc->chosen->mm->rss_stat[3].count);
+    // in case you get hit by
+    // "ERROR: The array index operator [] can only be used on arrays and pointers, found record..."
+    // "ERROR: Can not access field 'count' on expression of type 'none'..."
+    // prior to linux 6.2 $oc->chosen->mm->rss_stat is a mm_rss_stat struct
+    // https://github.com/torvalds/linux/commit/f1a7941243c102a44e8847e3b94ff4ff3ec56f25#diff-dc57f7b72015cf5f95444ec4f8a60f85d773f40b96ac59bf55b281cd63c06142
+    // you can use the version below instead
     //printf("  mm_rss_filepages=\"%d\" mm_rss_anonpages=\"%d\" mm_rss_swapents=\"%d\" mm_rss_shmempages=\"%d\"\n",
     //    $oc->chosen->mm->rss_stat.count[0].counter,
     //    $oc->chosen->mm->rss_stat.count[1].counter,
