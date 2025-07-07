@@ -22,6 +22,8 @@ services:
           memory: 128MiB
         reservations:
           memory: 64MiB
+    # Memory gets "swapped to disk" when memory pressure forces the kernel to do so. 
+    # We don't want that, otherwise stress-mem container is able to allocate more than 128MiB of memory space
     # mem_swappiness: 0     # this doesn't seem to work to restrict swap usage, nor does it change effective swappiness value in memcg
     memswap_limit: 128MiB   # disable swap by setting memswap_limit = mem_limit
     stop_grace_period: 1s
