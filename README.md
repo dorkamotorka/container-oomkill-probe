@@ -1,6 +1,6 @@
 # Troubleshooting Container OOM Kills with eBPF
 
-A simple container oomkill eBPF probe.
+This repository contains an example for inspecting container OOM (Out of memory) kills using an eBPF probe.
 
 Docker image is available on [Dockerhub](https://hub.docker.com/r/ar2pi/container-oomkill-probe).
 
