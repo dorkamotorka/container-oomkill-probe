@@ -6,7 +6,7 @@ Docker image is available on [Dockerhub](https://hub.docker.com/r/ar2pi/containe
 
 See the blog post [Troubleshoot Container OOM Kills with eBPF](https://dev.to/ar2pi/troubleshoot-container-oom-kills-with-ebpf-4am).
 
-## Run
+## Run & Test
 
 ```sh
 make up
